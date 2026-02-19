@@ -1,7 +1,6 @@
 export const config = { runtime: "edge" };
 
 export default async function handler(req) {
-  // Allow only POST
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -10,15 +9,14 @@ export default async function handler(req) {
   }
 
   try {
-    const jwt = process.env.PINATA_JWT;
-    if (!jwt) {
-      return new Response(JSON.stringify({ error: "Missing PINATA_JWT env" }), {
+    const token = process.env.NFT_STORAGE_TOKEN;
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Missing NFT_STORAGE_TOKEN env" }), {
         status: 500,
         headers: { "content-type": "application/json" },
       });
     }
 
-    // Read multipart/form-data
     const form = await req.formData();
     const file = form.get("file");
 
@@ -29,39 +27,35 @@ export default async function handler(req) {
       });
     }
 
-    const up = new FormData();
-    up.append("file", file, file.name || "upload");
-
-    const r = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+    const upRes = await fetch("https://api.nft.storage/upload", {
       method: "POST",
-      headers: { Authorization: `Bearer ${jwt}` },
-      body: up,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(file.type ? { "Content-Type": file.type } : {}),
+      },
+      body: file,
     });
 
-    // Read Pinata response as text first (so we can show the real error)
-    const text = await r.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { raw: text };
+    const data = await upRes.json().catch(() => ({}));
+
+    if (!upRes.ok) {
+      const details = data?.error?.message || data?.error || data || "Upload failed";
+      return new Response(JSON.stringify({ error: "NFT.Storage upload failed", details }), {
+        status: upRes.status,
+        headers: { "content-type": "application/json" },
+      });
     }
 
-    if (!r.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "Pinata request failed",
-          pinataStatus: r.status,
-          pinata: data,
-        }),
-        {
-          status: r.status || 500,
-          headers: { "content-type": "application/json" },
-        }
-      );
+    const cid = data?.value?.cid;
+    if (!cid) {
+      return new Response(JSON.stringify({ error: "Missing cid in response", raw: data }), {
+        status: 502,
+        headers: { "content-type": "application/json" },
+      });
     }
 
-    return new Response(JSON.stringify(data), {
+    // Pinata-compatible shape for your frontend:
+    return new Response(JSON.stringify({ IpfsHash: cid }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -72,4 +66,3 @@ export default async function handler(req) {
     });
   }
 }
-
