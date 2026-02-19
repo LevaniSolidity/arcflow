@@ -1,6 +1,7 @@
 export const config = { runtime: "edge" };
 
 export default async function handler(req) {
+  // Allow only POST
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
@@ -17,8 +18,10 @@ export default async function handler(req) {
       });
     }
 
+    // Read multipart/form-data
     const form = await req.formData();
     const file = form.get("file");
+
     if (!file) {
       return new Response(JSON.stringify({ error: "Missing file" }), {
         status: 400,
@@ -35,13 +38,27 @@ export default async function handler(req) {
       body: up,
     });
 
-    const data = await r.json().catch(() => ({}));
+    // Read Pinata response as text first (so we can show the real error)
+    const text = await r.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
 
     if (!r.ok) {
-      return new Response(JSON.stringify({ error: data?.error || data }), {
-        status: r.status || 500,
-        headers: { "content-type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          error: "Pinata request failed",
+          pinataStatus: r.status,
+          pinata: data,
+        }),
+        {
+          status: r.status || 500,
+          headers: { "content-type": "application/json" },
+        }
+      );
     }
 
     return new Response(JSON.stringify(data), {
@@ -55,3 +72,4 @@ export default async function handler(req) {
     });
   }
 }
+
