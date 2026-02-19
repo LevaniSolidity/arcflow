@@ -666,19 +666,12 @@
 
     function normalizeToFetchable(uriOrCid) {
       if (!uriOrCid) return { type: "unknown", value: "" };
-
-      if (uriOrCid.startsWith("ipfs://")) {
-        return { type: "ipfs", value: uriOrCid.replace("ipfs://", "") };
-      }
+      if (uriOrCid.startsWith("ipfs://")) return { type: "ipfs", value: uriOrCid.replace("ipfs://", "") };
 
       const ipfsMatch = uriOrCid.match(/\/ipfs\/(.+)$/i);
-      if (ipfsMatch && ipfsMatch[1]) {
-        return { type: "ipfs", value: ipfsMatch[1] };
-      }
+      if (ipfsMatch && ipfsMatch[1]) return { type: "ipfs", value: ipfsMatch[1] };
 
-      if (uriOrCid.startsWith("http://") || uriOrCid.startsWith("https://")) {
-        return { type: "http", value: uriOrCid };
-      }
+      if (uriOrCid.startsWith("http://") || uriOrCid.startsWith("https://")) return { type: "http", value: uriOrCid };
 
       return { type: "ipfs", value: uriOrCid };
     }
@@ -746,93 +739,76 @@
     function setMintLoading(isLoading) {
       const mintBtn = document.getElementById("mintBtn");
       mintBtn.disabled = isLoading;
-      if (isLoading) {
-        mintBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Working...`;
-      } else {
-        mintBtn.innerHTML = `<i class="fas fa-rocket"></i> MINT & LIST`;
-      }
+      if (isLoading) mintBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Working...`;
+      else mintBtn.innerHTML = `<i class="fas fa-rocket"></i> MINT & LIST`;
     }
 
     function prettyError(e) {
-      const msg =
-        (e?.data?.message) ||
-        (e?.error?.message) ||
-        (e?.reason) ||
-        (e?.message) ||
+      const details =
+        e?.response?.data?.pinata?.error ||
+        e?.response?.data?.pinata?.message ||
+        e?.response?.data?.pinata?.raw ||
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        e?.data?.message ||
+        e?.error?.message ||
+        e?.reason ||
+        e?.message ||
         String(e);
-      if (/user rejected/i.test(msg) || /ACTION_REJECTED/i.test(msg)) return "User rejected the transaction.";
-      return msg;
+
+      if (/user rejected/i.test(String(details)) || /ACTION_REJECTED/i.test(String(details))) {
+        return "User rejected the transaction.";
+      }
+      return typeof details === "string" ? details : JSON.stringify(details);
     }
 
     // ============================================================================
     // WALLET CONNECTION
     // ============================================================================
-   async function connectWallet() {
-  if (!window.ethereum) return alert("Please install MetaMask");
+    async function connectWallet() {
+      if (!window.ethereum) return alert("Please install MetaMask");
 
-  try {
-    // Try switch first
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: ARC_CHAIN_ID_HEX }],
-      });
-    } catch (switchErr) {
-      // If chain not added, then try add
-      if (switchErr?.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [{
-            chainId: ARC_CHAIN_ID_HEX,
-            chainName: "Arc Testnet",
-            rpcUrls: [ARC_RPC],
-            nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 }
-          }],
-        });
-      } else {
-        // If mismatch / already exists with different symbol, ignore and proceed to request accounts
-        console.warn("Network switch error:", switchErr);
+      try {
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: ARC_CHAIN_ID_HEX }],
+          });
+        } catch (switchErr) {
+          if (switchErr?.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: ARC_CHAIN_ID_HEX,
+                chainName: "Arc Testnet",
+                rpcUrls: [ARC_RPC],
+                nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 }
+              }],
+            });
+          } else {
+            console.warn("Network switch error:", switchErr);
+          }
+        }
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+
+        marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKET_ABI, signer);
+
+        const payAddr = await marketContract.payToken();
+        cachedTokenContract = new ethers.Contract(payAddr, ERC20_ABI, signer);
+        cachedDecimals = await cachedTokenContract.decimals();
+
+        const addr = await signer.getAddress();
+        const btn = document.getElementById("connectBtn");
+        btn.innerHTML = `<i class="fas fa-user-circle"></i> <span>${addr.substring(0, 6)}...${addr.substring(38)}</span>`;
+
+        await loadMarketItems();
+      } catch (e) {
+        alert("Wallet connection failed: " + prettyError(e));
       }
     }
-
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKET_ABI, signer);
-
-    const payAddr = await marketContract.payToken();
-    cachedTokenContract = new ethers.Contract(payAddr, ERC20_ABI, signer);
-    cachedDecimals = await cachedTokenContract.decimals();
-
-    const addr = await signer.getAddress();
-    const btn = document.getElementById("connectBtn");
-    btn.innerHTML = `<i class="fas fa-user-circle"></i> <span>${addr.substring(0, 6)}...${addr.substring(38)}</span>`;
-
-    await loadMarketItems();
-  } catch (e) {
-    alert("Wallet connection failed: " + (e?.message || e));
-  }
-}
-
-
-  const details =
-    e?.response?.data?.pinata?.error ||
-    e?.response?.data?.pinata?.message ||
-    e?.response?.data?.pinata?.raw ||
-    e?.response?.data?.error ||
-    e?.response?.data?.message ||
-    e?.message ||
-    String(e);
-
-  openModal(
-    "Transaction Failed",
-    typeof details === "string" ? details : JSON.stringify(details),
-    "error"
-  );
-} finally {
-  setMintLoading(false);
-}
-
 
     // ============================================================================
     // UPLOAD & MINT (PINATA MOVED TO /api)
@@ -853,14 +829,12 @@
       try {
         openModal("Uploading to IPFS", "Storing your asset on decentralized storage...", "loading");
 
-        // 1) Upload Image via Vercel API
         const formData = new FormData();
         formData.append('file', file);
 
         const resFile = await axios.post("/api/pinFile", formData, { timeout: 60000 });
         const imgHash = resFile.data.IpfsHash;
 
-        // 2) Upload Metadata via Vercel API
         openModal("Creating Metadata", "Generating token metadata...", "loading");
 
         const metadata = {
@@ -881,7 +855,6 @@
         const tokenUri = `ipfs://${resJson.data.IpfsHash}`;
         const priceWei = ethers.utils.parseUnits(String(price), cachedDecimals);
 
-        // 3) Mint NFT
         openModal("Minting NFT", "Please confirm the transaction in MetaMask...", "loading");
         const tx = await marketContract.createToken(tokenUri, priceWei, { gasLimit: 2500000 });
 
@@ -1066,3 +1039,5 @@
   </script>
 </body>
 </html>
+
+  
