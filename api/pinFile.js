@@ -1,13 +1,30 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+export const config = { runtime: "edge" };
+
+export default async function handler(req) {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "content-type": "application/json" },
+    });
+  }
 
   try {
     const jwt = process.env.PINATA_JWT;
-    if (!jwt) return res.status(500).json({ error: "Missing PINATA_JWT env" });
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: "Missing PINATA_JWT env" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
 
     const form = await req.formData();
     const file = form.get("file");
-    if (!file) return res.status(400).json({ error: "Missing file" });
+    if (!file) {
+      return new Response(JSON.stringify({ error: "Missing file" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
 
     const up = new FormData();
     up.append("file", file, file.name || "upload");
@@ -18,11 +35,23 @@ export default async function handler(req, res) {
       body: up,
     });
 
-    const data = await r.json();
-    if (!r.ok) return res.status(r.status).json({ error: data?.error || data });
+    const data = await r.json().catch(() => ({}));
 
-    return res.status(200).json(data);
+    if (!r.ok) {
+      return new Response(JSON.stringify({ error: data?.error || data }), {
+        status: r.status || 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
   } catch (e) {
-    return res.status(500).json({ error: e?.message || String(e) });
+    return new Response(JSON.stringify({ error: e?.message || String(e) }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
   }
 }
