@@ -767,45 +767,53 @@
     // ============================================================================
     // WALLET CONNECTION
     // ============================================================================
-    async function connectWallet() {
-      if (!window.ethereum) {
-        return alert("Please install MetaMask to use this marketplace");
-      }
+   async function connectWallet() {
+  if (!window.ethereum) return alert("Please install MetaMask");
 
-      try {
+  try {
+    // Try switch first
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: ARC_CHAIN_ID_HEX }],
+      });
+    } catch (switchErr) {
+      // If chain not added, then try add
+      if (switchErr?.code === 4902) {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
           params: [{
             chainId: ARC_CHAIN_ID_HEX,
             chainName: "Arc Testnet",
             rpcUrls: [ARC_RPC],
-            nativeCurrency: { name: "ARC", symbol: "ARC", decimals: 18 }
-          }]
-        }).catch(() => {});
+            nativeCurrency: { name: "Arc", symbol: "ARC", decimals: 18 }
+          }],
+        });
+      } else {
+        // If mismatch / already exists with different symbol, ignore and proceed to request accounts
+        console.warn("Network switch error:", switchErr);
+      }
+    }
 
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: ARC_CHAIN_ID_HEX }]
-        }).catch(() => {});
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKET_ABI, signer);
 
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        signer = provider.getSigner();
-        marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKET_ABI, signer);
+    const payAddr = await marketContract.payToken();
+    cachedTokenContract = new ethers.Contract(payAddr, ERC20_ABI, signer);
+    cachedDecimals = await cachedTokenContract.decimals();
 
-        const payAddr = await marketContract.payToken();
-        cachedTokenContract = new ethers.Contract(payAddr, ERC20_ABI, signer);
-        cachedDecimals = await cachedTokenContract.decimals();
+    const addr = await signer.getAddress();
+    const btn = document.getElementById("connectBtn");
+    btn.innerHTML = `<i class="fas fa-user-circle"></i> <span>${addr.substring(0, 6)}...${addr.substring(38)}</span>`;
 
-        const addr = await signer.getAddress();
-        const btn = document.getElementById("connectBtn");
-        btn.innerHTML = `<i class="fas fa-user-circle"></i> <span>${addr.substring(0, 6)}...${addr.substring(38)}</span>`;
-        btn.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
-        btn.style.boxShadow = "0 4px 20px rgba(16, 185, 129, 0.4)";
+    await loadMarketItems();
+  } catch (e) {
+    alert("Wallet connection failed: " + (e?.message || e));
+  }
+}
 
-        await loadMarketItems();
-      } catch (e) {
-  console.error(e);
 
   const details =
     e?.response?.data?.pinata?.error ||
