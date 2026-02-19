@@ -1,38 +1,69 @@
 // api/pinFile.js
-export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+export const config = { runtime: "edge" };
+
+export default async function handler(req) {
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
+      status: 405,
+      headers: { "content-type": "application/json" },
+    });
+  }
 
   try {
     const token = process.env.NFT_STORAGE_TOKEN;
-    if (!token) return res.status(500).json({ error: "Missing NFT_STORAGE_TOKEN env" });
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Missing NFT_STORAGE_TOKEN env" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      });
+    }
 
     const form = await req.formData();
     const file = form.get("file");
-    if (!file) return res.status(400).json({ error: "Missing file" });
 
-    // Do NOT set Content-Type manually (more compatible)
+    if (!file) {
+      return new Response(JSON.stringify({ error: "Missing file" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+
+    // Send as multipart FormData (most compatible)
+    const up = new FormData();
+    up.append("file", file, file.name || "upload");
+
     const r = await fetch("https://api.nft.storage/upload", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
-      body: file,
+      body: up,
     });
 
     const data = await r.json().catch(() => ({}));
 
     if (!r.ok) {
-      return res.status(r.status).json({
-        error: "NFT.Storage upload failed",
-        details: data?.error?.message || data?.error || data,
+      const details = data?.error?.message || data?.error || data || "Upload failed";
+      return new Response(JSON.stringify({ error: "NFT.Storage upload failed", details }), {
+        status: r.status,
+        headers: { "content-type": "application/json" },
       });
     }
 
     const cid = data?.value?.cid;
-    if (!cid) return res.status(502).json({ error: "Missing cid in response", raw: data });
+    if (!cid) {
+      return new Response(JSON.stringify({ error: "Missing cid in response", raw: data }), {
+        status: 502,
+        headers: { "content-type": "application/json" },
+      });
+    }
 
-    // Pinata-compatible shape for your frontend:
-    return res.status(200).json({ IpfsHash: cid });
+    return new Response(JSON.stringify({ IpfsHash: cid }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
   } catch (e) {
-    return res.status(500).json({ error: e?.message || String(e) });
+    return new Response(JSON.stringify({ error: e?.message || String(e) }), {
+      status: 500,
+      headers: { "content-type": "application/json" },
+    });
   }
 }
-
