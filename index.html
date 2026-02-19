@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArcFlow | Premium NFT Market</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #0f1419;
+      --bg-card: #151922;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-cyan: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border-color: rgba(148, 163, 184, 0.1);
+      --glow-blue: rgba(59, 130, 246, 0.4);
+      --glow-purple: rgba(139, 92, 246, 0.4);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: gradientShift 20s ease infinite;
+    }
+
+    @keyframes gradientShift { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { position: relative; z-index: 1; }
+
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 5%;
+      background: rgba(10, 14, 26, 0.95);
+      backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 1.6rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px var(--glow-blue);
+    }
+
+    .nav-actions { display: flex; gap: 12px; align-items: center; }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none !important; }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .btn:hover::before { width: 300px; height: 300px; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      box-shadow: 0 4px 20px var(--glow-blue);
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--glow-blue); }
+
+    .btn-outline {
+      background: rgba(59, 130, 246, 0.05);
+      border: 1.5px solid rgba(59, 130, 246, 0.3);
+      color: var(--accent-blue);
+    }
+
+    .btn-outline:hover {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: var(--accent-blue);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+
+    .hero {
+      max-width: 1400px;
+      margin: 60px auto 80px;
+      padding: 0 5%;
+      text-align: center;
+    }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-gradient {
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 1.25rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      margin-top: 40px;
+    }
+
+    .stat-item { text-align: center; }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-label { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .mint-section {
+      max-width: 600px;
+      margin: 0 auto 80px;
+      padding: 0 5%;
+    }
+
+    .card-glass {
+      background: rgba(21, 25, 34, 0.6);
+      backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .upload-zone {
+      border: 2px dashed rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      background: rgba(59, 130, 246, 0.02);
+      margin-bottom: 24px;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent-blue);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .upload-zone input {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon { font-size: 3rem; color: var(--accent-blue); margin-bottom: 12px; }
+    .upload-text { color: var(--text-secondary); font-size: 0.95rem; }
+
+    .input-group { margin-bottom: 20px; }
+
+    .input-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 14px 16px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: white;
+      font-size: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.3s;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .section {
+      max-width: 1400px;
+      margin: 80px auto;
+      padding: 0 5%;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .filter-tabs { display: flex; gap: 8px; }
+
+    .tab {
+      padding: 8px 16px;
+      background: rgba(59, 130, 246, 0.05);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+
+    .tab:hover, .tab.active {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 28px;
+    }
+
+    .nft-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .nft-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .nft-card:hover {
+      transform: translateY(-8px);
+      border-color: rgba(59, 130, 246, 0.5);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 130, 246, 0.3);
+    }
+
+    .nft-card:hover::before { opacity: 1; }
+
+    .card-image-wrapper {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+    }
+
+    .card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+    }
+
+    .card-image.loaded { opacity: 1; }
+
+    .nft-card:hover .card-image { transform: scale(1.08); }
+
+    .shimmer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, rgba(15, 20, 25, 0) 0%, rgba(59, 130, 246, 0.1) 50%, rgba(15, 20, 25, 0) 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    .new-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+      z-index: 2;
+    }
+
+    .card-body { padding: 20px; }
+    .card-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+
+    .card-price {
+      font-size: 1.4rem;
+      font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .card-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 440px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .modal-icon { margin: 0 auto 24px; }
+
+    .spinner {
+      width: 56px;
+      height: 56px;
+      border: 4px solid rgba(59, 130, 246, 0.1);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    .success-icon, .error-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+    }
+
+    .success-icon {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+    }
+
+    .error-icon {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+    }
+
+    .modal-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
+    .modal-desc { color: var(--text-secondary); margin-bottom: 28px; line-height: 1.6; word-break: break-word; }
+
+    @media (max-width: 768px) {
+      .navbar { padding: 16px 4%; }
+      .brand { font-size: 1.3rem; }
+      .hero-title { font-size: 2rem; }
+      .stats-row { gap: 24px; }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+      .card-glass { padding: 28px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="txModal" class="modal-overlay">
+    <div class="modal">
+      <div id="modalIcon" class="modal-icon"></div>
+      <div id="modalTitle" class="modal-title">Processing</div>
+      <div id="modalDesc" class="modal-desc">Please wait...</div>
+      <button id="modalCloseBtn" class="btn btn-primary" onclick="closeModal()" style="display:none; width:100%; justify-content:center;">
+        Close
+      </button>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <div class="brand">
+      <div class="brand-icon"><i class="fas fa-cube"></i></div>
+      <span>ArcFlow</span>
+    </div>
+    <div class="nav-actions">
+      <button id="connectBtn" class="btn btn-primary" onclick="connectWallet()">
+        <i class="fas fa-wallet"></i>
+        <span>Connect Wallet</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <section class="hero">
+      <h1 class="hero-title">
+        Discover, Create & Sell <br>
+        <span class="hero-gradient">Extraordinary NFTs</span>
+      </h1>
+      <p class="hero-subtitle">
+        The premier marketplace for digital assets on Arc Network.
+        Create, trade, and collect unique NFTs with zero gas fees.
+      </p>
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-value" id="statVolume">0</div>
+          <div class="stat-label">Total Volume</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statItems">0</div>
+          <div class="stat-label">Total Items</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statCreators">0</div>
+          <div class="stat-label">Creators</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mint-section">
+      <div class="card-glass">
+        <h2 class="card-title">
+          <i class="fas fa-bolt" style="color:var(--accent-blue);"></i>
+          Create New Asset
+        </h2>
+
+        <div class="upload-zone">
+          <div class="upload-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+          <div id="fileName" class="upload-text">Click or drag to upload image</div>
+          <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
+        </div>
+
+        <div class="input-group">
+          <label class="input-label">Price (USDC)</label>
+          <input type="number" id="nftPrice" class="input-field" placeholder="100" min="0" step="0.01">
+        </div>
+
+        <button id="mintBtn" class="btn btn-success" style="width:100%; justify-content:center; font-size:1.05rem;" onclick="uploadAndMint()">
+          <i class="fas fa-rocket"></i>
+          MINT & LIST
+        </button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-fire" style="color:var(--warning);"></i>
+          New Arrivals
+        </h2>
+      </div>
+      <div id="newGrid" class="grid">
+        <div style="grid-column: 1 / -1; text-align:center; color:var(--text-muted); padding:40px;">
+          Connect wallet to explore marketplace
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <i class="fas fa-layer-group" style="color:var(--accent-blue);"></i>
+          All Items
+        </h2>
+        <div class="filter-tabs">
+          <div class="tab active">All</div>
+          <div class="tab">Art</div>
+          <div class="tab">Gaming</div>
+        </div>
+      </div>
+      <div id="mainGrid" class="grid"></div>
+    </section>
+  </div>
+
+  <script>
+    // ============================================================================
+    // CONFIGURATION
+    // ============================================================================
+    const ARC_RPC = "https://rpc.testnet.arc.network";
+    const ARC_CHAIN_ID_HEX = "0x" + (5042002).toString(16);
+    const MARKETPLACE_ADDRESS = "0x405bCbd26D62ab805b1DA27A253713B3D6923318";
+
+    const MARKET_ABI = [
+      "function createToken(string tokenURI, uint256 price) public returns (uint256)",
+      "function createMarketSale(uint256 itemId) public",
+      "function fetchMarketItems() public view returns (tuple(uint256 itemId, address nftContract, uint256 tokenId, address seller, address owner, uint256 price, bool sold)[])",
+      "function tokenURI(uint256 tokenId) public view returns (string)",
+      "function payToken() public view returns (address)"
+    ];
+
+    const ERC20_ABI = [
+      "function approve(address spender, uint256 amount) public returns (bool)",
+      "function allowance(address owner, address spender) public view returns (uint256)",
+      "function balanceOf(address account) public view returns (uint256)",
+      "function decimals() public view returns (uint8)"
+    ];
+
+    // ============================================================================
+    // STATE
+    // ============================================================================
+    let provider, signer, marketContract;
+    let cachedTokenContract, cachedDecimals;
+
+    // ============================================================================
+    // IPFS GATEWAY HELPERS
+    // ============================================================================
+    const IPFS_GATEWAYS = [
+      "https://cloudflare-ipfs.com/ipfs/",
+      "https://ipfs.io/ipfs/",
+      "https://dweb.link/ipfs/",
+      "https://gateway.pinata.cloud/ipfs/"
+    ];
+
+    function normalizeToFetchable(uriOrCid) {
+      if (!uriOrCid) return { type: "unknown", value: "" };
+
+      if (uriOrCid.startsWith("ipfs://")) {
+        return { type: "ipfs", value: uriOrCid.replace("ipfs://", "") };
+      }
+
+      const ipfsMatch = uriOrCid.match(/\/ipfs\/(.+)$/i);
+      if (ipfsMatch && ipfsMatch[1]) {
+        return { type: "ipfs", value: ipfsMatch[1] };
+      }
+
+      if (uriOrCid.startsWith("http://") || uriOrCid.startsWith("https://")) {
+        return { type: "http", value: uriOrCid };
+      }
+
+      return { type: "ipfs", value: uriOrCid };
+    }
+
+    async function raceFetchJSON(uriOrCid) {
+      const norm = normalizeToFetchable(uriOrCid);
+
+      if (norm.type === "http") {
+        const res = await axios.get(norm.value, { timeout: 9000 });
+        return res.data;
+      }
+
+      if (norm.type !== "ipfs") return null;
+
+      const clean = norm.value.replace(/^\/+/, "");
+      const attempts = IPFS_GATEWAYS.map(gw =>
+        axios.get(gw + clean, { timeout: 6500 }).then(r => r.data)
+      );
+
+      try {
+        return await Promise.any(attempts);
+      } catch {
+        console.warn("All gateways failed:", clean);
+        return null;
+      }
+    }
+
+    // ============================================================================
+    // UI HELPERS
+    // ============================================================================
+    function openModal(title, desc, type = 'loading') {
+      const modal = document.getElementById('txModal');
+      const icon = document.getElementById('modalIcon');
+      const btn = document.getElementById('modalCloseBtn');
+
+      document.getElementById('modalTitle').innerText = title;
+      document.getElementById('modalDesc').innerText = desc;
+
+      if (type === 'loading') {
+        icon.innerHTML = '<div class="spinner"></div>';
+        btn.style.display = 'none';
+      } else if (type === 'success') {
+        icon.innerHTML = '<div class="success-icon"><i class="fas fa-check"></i></div>';
+        btn.style.display = 'block';
+      } else if (type === 'error') {
+        icon.innerHTML = '<div class="error-icon"><i class="fas fa-times"></i></div>';
+        btn.style.display = 'block';
+      }
+
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('txModal').classList.remove('active');
+    }
+
+    function handleFile(input) {
+      if (input.files[0]) {
+        const name = input.files[0].name;
+        document.getElementById('fileName').innerHTML =
+          `<span style="color:var(--success);"><i class="fas fa-check-circle"></i> ${name}</span>`;
+      }
+    }
+
+    function setMintLoading(isLoading) {
+      const mintBtn = document.getElementById("mintBtn");
+      mintBtn.disabled = isLoading;
+      if (isLoading) {
+        mintBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin"></i> Working...`;
+      } else {
+        mintBtn.innerHTML = `<i class="fas fa-rocket"></i> MINT & LIST`;
+      }
+    }
+
+    function prettyError(e) {
+      const msg =
+        (e?.data?.message) ||
+        (e?.error?.message) ||
+        (e?.reason) ||
+        (e?.message) ||
+        String(e);
+      if (/user rejected/i.test(msg) || /ACTION_REJECTED/i.test(msg)) return "User rejected the transaction.";
+      return msg;
+    }
+
+    // ============================================================================
+    // WALLET CONNECTION
+    // ============================================================================
+    async function connectWallet() {
+      if (!window.ethereum) {
+        return alert("Please install MetaMask to use this marketplace");
+      }
+
+      try {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: ARC_CHAIN_ID_HEX,
+            chainName: "Arc Testnet",
+            rpcUrls: [ARC_RPC],
+            nativeCurrency: { name: "ARC", symbol: "ARC", decimals: 18 }
+          }]
+        }).catch(() => {});
+
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: ARC_CHAIN_ID_HEX }]
+        }).catch(() => {});
+
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        marketContract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKET_ABI, signer);
+
+        const payAddr = await marketContract.payToken();
+        cachedTokenContract = new ethers.Contract(payAddr, ERC20_ABI, signer);
+        cachedDecimals = await cachedTokenContract.decimals();
+
+        const addr = await signer.getAddress();
+        const btn = document.getElementById("connectBtn");
+        btn.innerHTML = `<i class="fas fa-user-circle"></i> <span>${addr.substring(0, 6)}...${addr.substring(38)}</span>`;
+        btn.style.background = "linear-gradient(135deg, #10b981 0%, #059669 100%)";
+        btn.style.boxShadow = "0 4px 20px rgba(16, 185, 129, 0.4)";
+
+        await loadMarketItems();
+      } catch (e) {
+        alert("Wallet connection failed: " + prettyError(e));
+      }
+    }
+
+    // ============================================================================
+    // UPLOAD & MINT (PINATA MOVED TO /api)
+    // ============================================================================
+    async function uploadAndMint() {
+      if (!marketContract) return alert("Please connect your wallet first!");
+
+      const file = document.getElementById("fileInput").files[0];
+      const price = document.getElementById("nftPrice").value;
+
+      if (!file || !price) return alert("Please select an image and set a price!");
+
+      const p = Number(price);
+      if (!Number.isFinite(p) || p <= 0) return alert("Price must be greater than 0");
+
+      setMintLoading(true);
+
+      try {
+        openModal("Uploading to IPFS", "Storing your asset on decentralized storage...", "loading");
+
+        // 1) Upload Image via Vercel API
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const resFile = await axios.post("/api/pinFile", formData, { timeout: 60000 });
+        const imgHash = resFile.data.IpfsHash;
+
+        // 2) Upload Metadata via Vercel API
+        openModal("Creating Metadata", "Generating token metadata...", "loading");
+
+        const metadata = {
+          name: "ArcFlow Asset",
+          description: "Premium NFT from ArcFlow Marketplace",
+          image: `ipfs://${imgHash}`,
+          attributes: [
+            { trait_type: "Created", value: new Date().toLocaleDateString() },
+            { trait_type: "Platform", value: "ArcFlow" }
+          ]
+        };
+
+        const resJson = await axios.post("/api/pinJSON", metadata, {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
+        });
+
+        const tokenUri = `ipfs://${resJson.data.IpfsHash}`;
+        const priceWei = ethers.utils.parseUnits(String(price), cachedDecimals);
+
+        // 3) Mint NFT
+        openModal("Minting NFT", "Please confirm the transaction in MetaMask...", "loading");
+        const tx = await marketContract.createToken(tokenUri, priceWei, { gasLimit: 2500000 });
+
+        openModal("Confirming", "Waiting for blockchain confirmation...", "loading");
+        await tx.wait();
+
+        openModal("Success!", "Your NFT has been minted and listed on the marketplace!", "success");
+
+        document.getElementById("fileInput").value = "";
+        document.getElementById("nftPrice").value = "";
+        document.getElementById("fileName").innerText = "Click or drag to upload image";
+
+        setTimeout(() => {
+          closeModal();
+          loadMarketItems();
+        }, 1800);
+      } catch (e) {
+        console.error(e);
+        openModal("Transaction Failed", prettyError(e) || "An error occurred during minting", "error");
+      } finally {
+        setMintLoading(false);
+      }
+    }
+
+    // ============================================================================
+    // LOAD MARKETPLACE
+    // ============================================================================
+    async function loadMarketItems() {
+      if (!marketContract) return;
+
+      try {
+        const data = await marketContract.fetchMarketItems();
+        const ZERO = "0x0000000000000000000000000000000000000000";
+
+        const unsold = data.filter(i => !i.sold && i.owner === ZERO);
+        const sorted = [...unsold].reverse();
+
+        document.getElementById("statItems").innerText = unsold.length;
+        document.getElementById("statVolume").innerText = unsold.length * 10;
+        document.getElementById("statCreators").innerText = Math.floor(unsold.length / 2) || 1;
+
+        renderGrid(sorted.slice(0, 6), "newGrid", true);
+        renderGrid(sorted.slice(6), "mainGrid", false);
+      } catch (e) {
+        console.error("Load error:", e);
+      }
+    }
+
+    async function renderGrid(items, gridId, isNew) {
+      const grid = document.getElementById(gridId);
+
+      if (items.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align:center; color:var(--text-muted); padding:40px;">
+            ${isNew ? 'No new items yet' : 'No items found'}
+          </div>
+        `;
+        return;
+      }
+
+      let html = "";
+      items.forEach(i => {
+        const price = ethers.utils.formatUnits(i.price, cachedDecimals);
+        html += `
+          <div class="nft-card" id="item-${i.itemId}">
+            ${isNew ? '<div class="new-badge">NEW</div>' : ''}
+            <div class="card-image-wrapper">
+              <div class="shimmer" id="shimmer-${i.itemId}"></div>
+              <img src="" class="card-image nft-img-${i.itemId}" alt="NFT" loading="lazy">
+            </div>
+            <div class="card-body">
+              <div class="card-meta">
+                <div class="card-label">Price</div>
+              </div>
+              <div class="card-price">${price} USDC</div>
+              <div class="card-actions">
+                <button class="btn btn-primary" style="flex:1; justify-content:center;" onclick="buyItem(${i.itemId})">
+                  <i class="fas fa-shopping-cart"></i> Buy Now
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      grid.innerHTML = html;
+
+      items.forEach(async (i) => {
+        try {
+          const uri = await marketContract.tokenURI(i.tokenId);
+          const meta = await raceFetchJSON(uri);
+
+          if (meta && meta.image) {
+            const norm = normalizeToFetchable(meta.image);
+            const cleanImg = norm.type === "ipfs" ? norm.value.replace(/^\/+/, "") : "";
+
+            const imgEl = document.querySelector(`.nft-img-${i.itemId}`);
+            const shimmer = document.getElementById(`shimmer-${i.itemId}`);
+
+            if (!imgEl) return;
+
+            if (norm.type === "http") {
+              imgEl.src = meta.image;
+            } else if (norm.type === "ipfs") {
+              imgEl.src = `https://cloudflare-ipfs.com/ipfs/${cleanImg}`;
+            }
+
+            imgEl.onload = () => {
+              imgEl.classList.add('loaded');
+              if (shimmer) shimmer.style.display = 'none';
+            };
+
+            imgEl.onerror = function() {
+              if (norm.type !== "ipfs") {
+                if (shimmer) shimmer.style.display = 'none';
+                return;
+              }
+              if (this.src.includes('cloudflare')) this.src = `https://ipfs.io/ipfs/${cleanImg}`;
+              else if (this.src.includes('ipfs.io')) this.src = `https://dweb.link/ipfs/${cleanImg}`;
+              else if (this.src.includes('dweb')) this.src = `https://gateway.pinata.cloud/ipfs/${cleanImg}`;
+              else if (shimmer) shimmer.style.display = 'none';
+            };
+          }
+        } catch (e) {
+          console.error("Item load error:", i.itemId);
+        }
+      });
+    }
+
+    // ============================================================================
+    // BUY ITEM
+    // ============================================================================
+    async function buyItem(itemId) {
+      try {
+        openModal("Checking Balance", "Verifying your USDC balance...", "loading");
+
+        const items = await marketContract.fetchMarketItems();
+        const item = items.find(i => i.itemId.toString() === itemId.toString());
+
+        if (!item) {
+          openModal("Error", "Item not found", "error");
+          return;
+        }
+
+        const buyer = await signer.getAddress();
+        const bal = await cachedTokenContract.balanceOf(buyer);
+
+        if (bal.lt(item.price)) {
+          openModal("Insufficient Balance", "You don't have enough USDC to buy this NFT", "error");
+          return;
+        }
+
+        const allowance = await cachedTokenContract.allowance(buyer, MARKETPLACE_ADDRESS);
+
+        if (allowance.lt(item.price)) {
+          openModal("Approving USDC", "Please approve the transaction in MetaMask...", "loading");
+          const appTx = await cachedTokenContract.approve(MARKETPLACE_ADDRESS, ethers.constants.MaxUint256);
+          await appTx.wait();
+        }
+
+        openModal("Purchasing NFT", "Confirm the purchase in MetaMask...", "loading");
+        const buyTx = await marketContract.createMarketSale(itemId, { gasLimit: 2000000 });
+        await buyTx.wait();
+
+        openModal("Purchase Complete!", "Congratulations! The NFT is now yours!", "success");
+
+        const card = document.getElementById(`item-${itemId}`);
+        if (card) {
+          card.style.transform = "scale(0.95)";
+          card.style.opacity = "0";
+          setTimeout(() => card.remove(), 400);
+        }
+
+        setTimeout(() => {
+          closeModal();
+          loadMarketItems();
+        }, 1600);
+      } catch (e) {
+        console.error(e);
+        openModal("Transaction Failed", prettyError(e) || "Purchase failed", "error");
+      }
+    }
+  </script>
+</body>
+</html>
