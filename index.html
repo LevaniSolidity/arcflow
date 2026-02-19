@@ -805,9 +805,26 @@
 
         await loadMarketItems();
       } catch (e) {
-        alert("Wallet connection failed: " + prettyError(e));
-      }
-    }
+  console.error(e);
+
+  const details =
+    e?.response?.data?.pinata?.error ||
+    e?.response?.data?.pinata?.message ||
+    e?.response?.data?.pinata?.raw ||
+    e?.response?.data?.error ||
+    e?.response?.data?.message ||
+    e?.message ||
+    String(e);
+
+  openModal(
+    "Transaction Failed",
+    typeof details === "string" ? details : JSON.stringify(details),
+    "error"
+  );
+} finally {
+  setMintLoading(false);
+}
+
 
     // ============================================================================
     // UPLOAD & MINT (PINATA MOVED TO /api)
